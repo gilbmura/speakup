@@ -16,7 +16,20 @@ docker compose up --build
 
 Then open: **http://localhost:8000**
 
-Seed data is automatically loaded on first startup.
+Seed data is loaded automatically on container startup (safe to run repeatedly; seeding is idempotent).
+
+### Docker services and ports
+
+- `app` service (`speakup_app`) exposed on **http://localhost:8000**
+- `db` service (`speakup_db`) exposed on **localhost:3307** (mapped to container `3306`)
+
+Useful commands:
+
+```bash
+docker compose ps
+docker compose logs -f app
+docker compose down
+```
 
 ---
 
@@ -100,7 +113,7 @@ speakup/
 │   │   ├── admin/        # users, categories, reports, audit
 │   │   └── errors/       # 404.html, 403.html
 │   └── static/
-│       └── uploads/      # Uploaded images stored here
+│       └── uploads/      # Uploaded images stored here (created at runtime/build if missing)
 ├── alembic/
 │   ├── env.py
 │   └── versions/
@@ -208,12 +221,23 @@ INDEX ix_escalation_issue_created (issue_id, created_at)
 
 | Variable | Description | Default |
 |---|---|---|
+| `APP_HOST` | App bind host | 0.0.0.0 |
+| `APP_PORT` | App bind port | 8000 |
 | `DATABASE_URL` | MySQL connection string | (see .env.example) |
 | `APP_SECRET_KEY` | Session signing key | change-this! |
 | `APP_ENV` | `development` or `production` | development |
 | `UPLOAD_DIR` | Upload storage path | app/static/uploads |
 | `MAX_UPLOAD_SIZE_MB` | Max file size | 5 |
 | `SLA_DAYS` | Days before SLA escalation | 30 |
+
+---
+
+## Docker Troubleshooting
+
+- Warning: `the attribute version is obsolete`
+  - Cause: Docker Compose v2 ignores top-level `version`.
+  - Current state: safe to ignore.
+  - Optional cleanup: remove `version: "3.9"` from `docker-compose.yml` to silence the warning.
 
 ---
 
