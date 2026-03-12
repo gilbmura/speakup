@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Reports & Analytics{% endblock %}
+{% block content %}
+
+{% if request.query_params.get('sla') == 'done' %}
+<div class="alert alert-success alert-dismissible py-2">
+  SLA check complete — Checked: {{ request.query_params.get('checked') }}, Escalated: {{ request.query_params.get('escalated') }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0" style="color:var(--su-dark)"><i class="bi bi-bar-chart me-2" style="color:var(--su-green)"></i>Reports & Analytics</h4>
+  <form method="POST" action="/admin/run-sla-check">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-outline-warning"
+            onclick="return confirm('Run SLA check now? This will escalate overdue issues.')">
+      <i class="bi bi-clock-history me-1"></i>Run SLA Check
+    </button>
+  </form>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card p-3 text-center" style="border-left:4px solid var(--su-green)">
+      <div class="fw-bold fs-2">{{ total_issues }}</div>
+      <small class="text-muted">Total Issues</small>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center" style="border-left:4px solid #dc3545">
+      <div class="fw-bold fs-2 text-danger">{{ overdue_count }}</div>
+      <small class="text-muted">Overdue Issues</small>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-pie-chart me-2" style="color:var(--su-green)"></i>Issues by Category</h6>
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>Category</th><th class="text-end">Count</th></tr></thead>
+        <tbody>
+          {% for row in by_category %}
+          <tr><td>{{ row.name }}</td><td class="text-end fw-bold">{{ row.count }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-activity me-2" style="color:var(--su-green)"></i>By Status</h6>
+      {% for row in by_status %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="badge badge-status-{{ row.current_status.value }}">{{ row.current_status.value.replace('_',' ') }}</span>
+          <strong>{{ row.count }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-layers me-2" style="color:var(--su-green)"></i>By Level</h6>
+      {% for row in by_level %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="badge badge-level-{{ row.current_level.value }}">{{ row.current_level.value }}</span>
+          <strong>{{ row.count }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

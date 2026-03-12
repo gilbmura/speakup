@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block content %}
+<h4 class="fw-bold mb-4" style="color:var(--su-dark)"><i class="bi bi-journal-text me-2" style="color:var(--su-green)"></i>Audit Log <small class="text-muted fs-6">(last 500 entries)</small></h4>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0" style="font-size:.85rem">
+      <thead class="table-light">
+        <tr>
+          <th>Time</th>
+          <th>Actor</th>
+          <th>Action</th>
+          <th>Entity</th>
+          <th>ID</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td class="text-muted text-nowrap">{{ log.created_at.strftime('%d %b %Y %H:%M') }}</td>
+          <td>{% if log.actor_user_id %}<span class="badge bg-secondary">User #{{ log.actor_user_id }}</span>{% else %}<span class="text-muted">System</span>{% endif %}</td>
+          <td><span class="badge bg-dark">{{ log.action_type }}</span></td>
+          <td>{{ log.entity_type }}</td>
+          <td>{{ log.entity_id or '—' }}</td>
+          <td>
+            {% if log.metadata_json %}
+              <code style="font-size:.78rem">{{ log.metadata_json[:120] }}{% if log.metadata_json|length > 120 %}…{% endif %}</code>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

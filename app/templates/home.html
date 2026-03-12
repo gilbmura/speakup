@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Welcome{% endblock %}
+{% block content %}
+<div class="row align-items-center py-5">
+  <div class="col-lg-6">
+    <h1 class="display-5 fw-bold" style="color:var(--su-dark)">
+      Your voice.<br>Your community.<br><span style="color:var(--su-green)">Your governance.</span>
+    </h1>
+    <p class="lead text-muted mt-3">
+      SpeakUp lets citizens report local issues directly to the right authorities — 
+      and tracks them until they're resolved. Transparently. Accountably.
+    </p>
+    {% if not user_id %}
+    <div class="d-flex gap-3 mt-4">
+      <a href="/register" class="btn btn-success btn-lg px-4"><i class="bi bi-person-plus me-2"></i>Get Started</a>
+      <a href="/login" class="btn btn-outline-secondary btn-lg px-4">Login</a>
+    </div>
+    {% else %}
+    <a href="/issues/new" class="btn btn-success btn-lg px-4 mt-4">
+      <i class="bi bi-plus-circle me-2"></i>Report an Issue
+    </a>
+    {% endif %}
+  </div>
+  <div class="col-lg-6 mt-5 mt-lg-0">
+    <div class="row g-3">
+      {% for icon, title, desc in [
+        ('bi-geo-alt-fill','Report Locally','Submit issues for your district, sector, or cell.'),
+        ('bi-arrow-up-circle','Escalation Tracking','Issues escalate to MINALOC or President Office if unresolved.'),
+        ('bi-incognito','Anonymous Option','Report sensitive issues without revealing your identity.'),
+        ('bi-clock-history','Full Transparency','Track every status change and authority response.')
+      ] %}
+      <div class="col-6">
+        <div class="card p-3 h-100">
+          <i class="bi {{ icon }} fs-2 mb-2" style="color:var(--su-green)"></i>
+          <h6 class="fw-bold">{{ title }}</h6>
+          <small class="text-muted">{{ desc }}</small>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

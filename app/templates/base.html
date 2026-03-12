@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}SpeakUp{% endblock %} — Community Issue Reporting</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root {
+      --su-green: #1a7a4a;
+      --su-green-light: #e8f5ee;
+      --su-accent: #f59e0b;
+      --su-dark: #0f3d24;
+    }
+    body {
+      background: #f8faf9;
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .navbar { background: var(--su-dark) !important; }
+    .navbar-brand { font-weight: 700; letter-spacing: 1px; color: #fff !important; }
+    .navbar-brand span { color: var(--su-accent); }
+    .nav-link { color: rgba(255,255,255,.85) !important; }
+    .nav-link:hover { color: var(--su-accent) !important; }
+    .badge-level-LOCAL    { background:#198754; }
+    .badge-level-MINALOC  { background:#0d6efd; }
+    .badge-level-PRESIDENT{ background:#dc3545; }
+    .badge-status-SUBMITTED  { background:#6c757d; }
+    .badge-status-IN_REVIEW  { background:#0d6efd; }
+    .badge-status-IN_PROGRESS{ background:#fd7e14; }
+    .badge-status-RESOLVED   { background:#198754; }
+    .badge-status-REJECTED   { background:#dc3545; }
+    .timeline { border-left: 3px solid var(--su-green); padding-left: 1.2rem; }
+    .timeline-item { position: relative; margin-bottom: 1.2rem; }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -1.5rem;
+      top: .35rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--su-green);
+      border: 2px solid #fff;
+    }
+    .card { border: none; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
+    .sidebar-card { border-left: 4px solid var(--su-green); }
+    footer {
+      background: var(--su-dark);
+      color: rgba(255,255,255,.6);
+      font-size:.85rem;
+      margin-top: auto;
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── Navbar ─────────────────────────────────────────────────────────────── -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+  <div class="container">
+    <a class="navbar-brand" href="/"><i class="bi bi-megaphone-fill me-2"></i>Speak<span>Up</span></a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
+        {% if request.session.get('user_id') %}
+          {% set role = request.session.get('user_role') %}
+          {% set uname = request.session.get('user_name') %}
+
+          {# CITIZEN #}
+          {% if role == 'CITIZEN' %}
+            <li class="nav-item"><a class="nav-link" href="/issues"><i class="bi bi-list-ul me-1"></i>My Issues</a></li>
+            <li class="nav-item"><a class="nav-link" href="/issues/new"><i class="bi bi-plus-circle me-1"></i>Report Issue</a></li>
+          {% endif %}
+
+          {# AUTHORITY ROLES #}
+          {% if role in ['LOCAL_AUTHORITY','MINALOC_OFFICER','PRESIDENT_OFFICE_OFFICER'] %}
+            <li class="nav-item"><a class="nav-link" href="/authority/issues"><i class="bi bi-clipboard-check me-1"></i>Dashboard</a></li>
+          {% endif %}
+
+          {# ADMIN #}
+          {% if role == 'SYS_ADMIN' %}
+            <li class="nav-item"><a class="nav-link" href="/admin/users"><i class="bi bi-people me-1"></i>Users</a></li>
+            <li class="nav-item"><a class="nav-link" href="/admin/categories"><i class="bi bi-tags me-1"></i>Categories</a></li>
+            <li class="nav-item"><a class="nav-link" href="/admin/reports"><i class="bi bi-bar-chart me-1"></i>Reports</a></li>
+            <li class="nav-item"><a class="nav-link" href="/admin/audit"><i class="bi bi-journal-text me-1"></i>Audit Log</a></li>
+          {% endif %}
+
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle me-1"></i>{{ uname }}
+              <span class="badge bg-secondary ms-1" style="font-size:.65rem;">{{ role.replace('_',' ') }}</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+            </ul>
+          </li>
+        {% else %}
+          <li class="nav-item"><a class="nav-link" href="/login">Login</a></li>
+          <li class="nav-item"><a class="btn btn-sm btn-warning ms-2 px-3" href="/register">Register</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Flash message area ─────────────────────────────────────────────────── -->
+{% with msgs = request.session.pop('flash', []) %}
+  {% if msgs %}
+    <div class="container mt-2">
+      {% for msg in msgs %}
+        <div class="alert alert-info alert-dismissible fade show py-2" role="alert">
+          {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<!-- ── Main content ───────────────────────────────────────────────────────── -->
+<main class="container my-4 flex-grow-1">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="py-3 mt-auto">
+  <div class="container text-center">
+    SpeakUp &copy; 2026 &mdash; Community Governance Platform
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

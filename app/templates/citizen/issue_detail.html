@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Issue #{{ issue.id }}{% endblock %}
+{% block content %}
+
+<div class="mb-3">
+  <a href="/issues" class="text-muted text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Back to My Issues</a>
+</div>
+
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
+<div class="card p-4 mb-4 sidebar-card">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+      <h4 class="fw-bold mb-1" style="color:var(--su-dark)">
+        {{ issue.summary or ('Issue #' ~ issue.id) }}
+        {% if issue.is_anonymous %}
+          <span class="badge bg-secondary fs-6 ms-1" title="Anonymous"><i class="bi bi-incognito"></i></span>
+        {% endif %}
+        {% if issue.is_overdue %}
+          <span class="badge bg-danger ms-1">OVERDUE</span>
+        {% endif %}
+      </h4>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="badge badge-status-{{ issue.current_status.value }} fs-6">
+          {{ issue.current_status.value.replace('_',' ') }}
+        </span>
+        <span class="badge badge-level-{{ issue.current_level.value }} fs-6">
+          {{ issue.current_level.value }} LEVEL
+        </span>
+        <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>{{ issue.created_at.strftime('%d %b %Y, %H:%M') }}</small>
+      </div>
+    </div>
+    <div class="text-end text-muted small">
+      <div><i class="bi bi-tag me-1"></i>{{ issue.category.name }}</div>
+      <div><i class="bi bi-geo-alt me-1"></i>{{ issue.district }}, {{ issue.sector }}, {{ issue.cell }}</div>
+    </div>
+  </div>
+
+  <hr>
+  <p class="mb-0">{{ issue.description }}</p>
+</div>
+
+<div class="row g-4">
+  <!-- ── Left: Timeline ──────────────────────────────────────────────────── -->
+  <div class="col-lg-8">
+
+    <!-- Attachments -->
+    {% if issue.attachments %}
+    <div class="card p-3 mb-4">
+      <h6 class="fw-bold mb-3"><i class="bi bi-images me-2" style="color:var(--su-green)"></i>Photo Evidence</h6>
+      <div class="d-flex flex-wrap gap-2">
+        {% for att in issue.attachments %}
+          <a href="/static/uploads/{{ att.file_path }}" target="_blank">
+            <img src="/static/uploads/{{ att.file_path }}" alt="{{ att.original_filename }}"
+                 style="width:120px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6;">
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Authority Responses grouped by level -->
+    {% for level_name in ['LOCAL','MINALOC','PRESIDENT'] %}
+      {% set level_responses = issue.authority_responses | selectattr('level.value', 'eq', level_name) | list %}
+      {% if level_responses %}
+      <div class="card p-3 mb-3">
+        <h6 class="fw-bold mb-3">
+          <span class="badge badge-level-{{ level_name }} me-2">{{ level_name }}</span>
+          Authority Responses
+        </h6>
+        {% for resp in level_responses %}
+          <div class="border rounded p-3 mb-2 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <small class="fw-semibold text-muted">Official Response</small>
+              <small class="text-muted">{{ resp.created_at.strftime('%d %b %Y, %H:%M') }}</small>
+            </div>
+            <p class="mb-0">{{ resp.message }}</p>
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Status Timeline -->
+    <div class="card p-3 mb-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-2" style="color:var(--su-green)"></i>Status History</h6>
+      {% if issue.status_updates %}
+        <div class="timeline">
+          {% for su in issue.status_updates %}
+          <div class="timeline-item">
+            <div class="d-flex justify-content-between">
+              <span>
+                <span class="badge badge-status-{{ su.from_status.value }}">{{ su.from_status.value.replace('_',' ') }}</span>
+                <i class="bi bi-arrow-right mx-1 text-muted"></i>
+                <span class="badge badge-status-{{ su.to_status.value }}">{{ su.to_status.value.replace('_',' ') }}</span>
+                <span class="badge badge-level-{{ su.level_at_time.value }} ms-1">{{ su.level_at_time.value }}</span>
+              </span>
+              <small class="text-muted">{{ su.created_at.strftime('%d %b %Y') }}</small>
+            </div>
+            {% if su.comment %}<small class="text-muted">{{ su.comment }}</small>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <small class="text-muted">No status changes yet.</small>
+      {% endif %}
+    </div>
+
+    <!-- Escalation Events -->
+    {% if issue.escalation_events %}
+    <div class="card p-3 mb-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-arrow-up-circle me-2" style="color:#dc3545"></i>Escalation History</h6>
+      <div class="timeline">
+        {% for esc in issue.escalation_events %}
+        <div class="timeline-item">
+          <div class="d-flex justify-content-between align-items-center">
+            <span>
+              <span class="badge badge-level-{{ esc.from_level.value }}">{{ esc.from_level.value }}</span>
+              <i class="bi bi-arrow-right mx-1"></i>
+              <span class="badge badge-level-{{ esc.to_level.value }}">{{ esc.to_level.value }}</span>
+              <span class="badge bg-secondary ms-1">{{ esc.reason.value.replace('_',' ') }}</span>
+            </span>
+            <small class="text-muted">{{ esc.created_at.strftime('%d %b %Y') }}</small>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Citizen Feedback History -->
+    {% if issue.citizen_feedbacks %}
+    <div class="card p-3 mb-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-chat-square-dots me-2" style="color:var(--su-accent)"></i>Your Feedback History</h6>
+      {% for fb in issue.citizen_feedbacks %}
+        <div class="border rounded p-2 mb-2 bg-light">
+          <div class="d-flex justify-content-between">
+            <span>
+              <span class="badge badge-level-{{ fb.level.value }}">{{ fb.level.value }}</span>
+              <span class="badge {% if fb.outcome.value == 'SATISFIED' %}bg-success{% else %}bg-warning text-dark{% endif %} ms-1">
+                {{ fb.outcome.value.replace('_',' ') }}
+              </span>
+            </span>
+            <small class="text-muted">{{ fb.created_at.strftime('%d %b %Y') }}</small>
+          </div>
+          {% if fb.comment %}<small class="text-muted mt-1 d-block">{{ fb.comment }}</small>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- ── Right: Feedback Panel ───────────────────────────────────────────── -->
+  <div class="col-lg-4">
+    {% if show_feedback %}
+    <div class="card border-2 border-warning p-4 mb-4">
+      <h6 class="fw-bold"><i class="bi bi-hand-thumbs-up me-2" style="color:var(--su-accent)"></i>Issue Marked Resolved</h6>
+      <p class="text-muted small mt-2">The authority has resolved this issue. Are you satisfied with the outcome?</p>
+
+      <form method="POST" action="/issues/{{ issue.id }}/feedback">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Your Feedback</label>
+          {% if issue.current_level == IssueLevel.LOCAL %}
+            <div class="d-flex gap-2">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="outcome" value="SATISFIED" id="sat" required>
+                <label class="form-check-label text-success fw-semibold" for="sat"><i class="bi bi-check-circle me-1"></i>Satisfied</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="outcome" value="NOT_RESOLVED" id="notres">
+                <label class="form-check-label text-danger fw-semibold" for="notres"><i class="bi bi-x-circle me-1"></i>Not Resolved</label>
+              </div>
+            </div>
+            <div class="form-text">If "Not Resolved", issue escalates to MINALOC.</div>
+          {% elif issue.current_level == IssueLevel.MINALOC %}
+            <div class="d-flex gap-2">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="outcome" value="SATISFIED" id="sat2" required>
+                <label class="form-check-label text-success fw-semibold" for="sat2"><i class="bi bi-check-circle me-1"></i>Satisfied</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="outcome" value="NOT_FAIR" id="notfair">
+                <label class="form-check-label text-danger fw-semibold" for="notfair"><i class="bi bi-x-circle me-1"></i>Not Fair</label>
+              </div>
+            </div>
+            <div class="form-text">If "Not Fair", issue escalates to President Office.</div>
+          {% else %}
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="outcome" value="SATISFIED" id="sat3" required>
+              <label class="form-check-label text-success fw-semibold" for="sat3"><i class="bi bi-check-circle me-1"></i>Satisfied</label>
+            </div>
+          {% endif %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Comment (optional)</label>
+          <textarea name="comment" class="form-control form-control-sm" rows="3" placeholder="Any additional notes..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-warning w-100 fw-semibold">Submit Feedback</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Quick Info Card -->
+    <div class="card p-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2" style="color:var(--su-green)"></i>Issue Summary</h6>
+      <table class="table table-sm table-borderless mb-0">
+        <tr><td class="text-muted">ID</td><td class="fw-semibold">#{{ issue.id }}</td></tr>
+        <tr><td class="text-muted">Category</td><td>{{ issue.category.name }}</td></tr>
+        <tr><td class="text-muted">District</td><td>{{ issue.district }}</td></tr>
+        <tr><td class="text-muted">Sector</td><td>{{ issue.sector }}</td></tr>
+        <tr><td class="text-muted">Cell</td><td>{{ issue.cell }}</td></tr>
+        <tr><td class="text-muted">Level</td><td><span class="badge badge-level-{{ issue.current_level.value }}">{{ issue.current_level.value }}</span></td></tr>
+        <tr><td class="text-muted">Status</td><td><span class="badge badge-status-{{ issue.current_status.value }}">{{ issue.current_status.value.replace('_',' ') }}</span></td></tr>
+        <tr><td class="text-muted">Responses</td><td>{{ issue.authority_responses | length }}</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

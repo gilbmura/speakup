@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Categories{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0" style="color:var(--su-dark)"><i class="bi bi-tags me-2" style="color:var(--su-green)"></i>Issue Categories</h4>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-5">
+    <div class="card p-4">
+      <h6 class="fw-bold mb-3">Add New Category</h6>
+      <form method="POST" action="/admin/categories/create">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="input-group">
+          <input type="text" name="name" class="form-control" placeholder="e.g. Roads" required>
+          <button type="submit" class="btn btn-success"><i class="bi bi-plus me-1"></i>Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="col-md-7">
+    <div class="card">
+      <ul class="list-group list-group-flush">
+        {% for cat in categories %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-tag me-2 text-muted"></i>{{ cat.name }}</span>
+            <form method="POST" action="/admin/categories/{{ cat.id }}/delete" onsubmit="return confirm('Delete category: {{ cat.name }}?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </li>
+        {% else %}
+          <li class="list-group-item text-muted">No categories yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

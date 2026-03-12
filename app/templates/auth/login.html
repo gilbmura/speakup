@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5 col-lg-4">
+    <div class="card p-4 mt-4">
+      <h4 class="fw-bold mb-1" style="color:var(--su-dark)"><i class="bi bi-box-arrow-in-right me-2" style="color:var(--su-green)"></i>Sign In</h4>
+      <p class="text-muted small mb-4">Access your SpeakUp account</p>
+
+      {% if error %}
+        <div class="alert alert-danger py-2 small">{{ error }}</div>
+      {% endif %}
+
+      <form method="POST" action="/login" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Email address</label>
+          <input type="email" name="email" class="form-control" placeholder="you@example.com" required autofocus>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Password</label>
+          <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-success w-100 mt-1">Sign In</button>
+      </form>
+
+      <hr class="my-3">
+      <p class="text-center small text-muted mb-0">
+        Don't have an account? <a href="/register" class="text-success fw-semibold">Register here</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+
+  # ── MySQL 8 ────────────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: speakup_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: speakup
+      MYSQL_USER: speakup
+      MYSQL_PASSWORD: speakup123
+    ports:
+      - "3307:3306"   # host:3307 to avoid conflict with local MySQL
+    volumes:
+      - speakup_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uspeakup", "-pspeakup123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── FastAPI Application ────────────────────────────────────────────────────
+  app:
+    build: .
+    container_name: speakup_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql+pymysql://speakup:speakup123@db:3306/speakup
+      APP_SECRET_KEY: docker-secret-key-CHANGE-IN-PRODUCTION-please
+      APP_ENV: development
+      UPLOAD_DIR: app/static/uploads
+    ports:
+      - "8000:8000"
+    volumes:
+      - speakup_uploads:/speakup/app/static/uploads
+
+volumes:
+  speakup_mysql_data:
+  speakup_uploads:
