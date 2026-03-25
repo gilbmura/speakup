@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Welcome{% endblock %}
+{% block title %}SpeakUp{% endblock %}
+{% block title_suffix %}{% endblock %}
 {% block content %}
 <div class="row align-items-center py-5">
   <div class="col-lg-6">
@@ -7,7 +8,7 @@
       Your voice.<br>Your community.<br><span style="color:var(--su-green)">Your governance.</span>
     </h1>
     <p class="lead text-muted mt-3">
-      SpeakUp lets citizens report local issues directly to the right authorities — 
+      SpeakUp lets citizens report local issues directly to the right authorities 
       and tracks them until they're resolved. Transparently. Accountably.
     </p>
     {% if not user_id %}
