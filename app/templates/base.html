@@ -54,6 +54,40 @@
       font-size:.85rem;
       margin-top: auto;
     }
+    @media (max-width: 991.98px) {
+      .navbar-collapse {
+        padding-top: .75rem;
+        margin-top: .5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      .navbar-collapse .navbar-nav {
+        width: 100%;
+        align-items: stretch !important;
+        gap: 0.25rem;
+      }
+      .navbar-collapse .nav-item {
+        width: 100%;
+      }
+      .navbar-collapse .nav-link {
+        padding: 0.65rem 0.75rem;
+        border-radius: 0.375rem;
+      }
+      .navbar-collapse .nav-link:hover,
+      .navbar-collapse .nav-link:focus {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .navbar-collapse .nav-item .btn {
+        width: 100%;
+        margin-left: 0 !important;
+        margin-top: 0.25rem;
+        padding: 0.55rem 1rem;
+        text-align: center;
+      }
+      .navbar-collapse .dropdown-menu {
+        width: 100%;
+        margin-top: 0.25rem;
+      }
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
@@ -63,11 +97,12 @@
 <nav class="navbar navbar-expand-lg navbar-dark">
   <div class="container">
     <a class="navbar-brand" href="/"><i class="bi bi-megaphone-fill me-2"></i>Speak<span>Up</span></a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu"
+            aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navMenu">
-      <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
         {% if request.session.get('user_id') %}
           {% set role = request.session.get('user_role') %}
           {% set uname = request.session.get('user_name') %}
@@ -101,8 +136,8 @@
             </ul>
           </li>
         {% else %}
-          <li class="nav-item"><a class="nav-link" href="/login">Login</a></li>
-          <li class="nav-item"><a class="btn btn-sm btn-warning ms-2 px-3" href="/register">Register</a></li>
+          <li class="nav-item"><a class="nav-link rounded" href="/login"><i class="bi bi-box-arrow-in-right me-1"></i>Login</a></li>
+          <li class="nav-item"><a class="btn btn-sm btn-warning px-3 ms-0 ms-lg-2" href="/register"><i class="bi bi-person-plus me-1"></i>Register</a></li>
         {% endif %}
       </ul>
     </div>
