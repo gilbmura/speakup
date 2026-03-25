@@ -1,91 +1,245 @@
-# SpeakUp — Community Issue Reporting & Tracking Platform
+# SpeakUp — Community Issue Reporting and Tracking Platform
 
-A production-ready MVP for local governance in Africa. Citizens report issues, authorities respond, and a full escalation chain ensures accountability — from Local Authority → MINALOC → President's Office.
-
----
-
-## Quick Start
-
-### Option A: Docker (recommended — one command)
-
-**Prerequisites:** Docker Desktop installed and running.
-
-```bash
-docker compose up --build
-```
-
-Then open: **http://localhost:8000**
-
-Seed data is loaded automatically on container startup (safe to run repeatedly; seeding is idempotent).
-
-### Docker services and ports
-
-- `app` service (`speakup_app`) exposed on **http://localhost:8000**
-- `db` service (`speakup_db`) exposed on **localhost:3307** (mapped to container `3306`)
-
-Useful commands:
-
-```bash
-docker compose ps
-docker compose logs -f app
-docker compose down
-```
+A production-ready MVP for local governance in Africa. Citizens report issues, authorities respond, and a full escalation chain ensures accountability from Local Authority through MINALOC to the President's Office.
 
 ---
 
-### Option B: Local Windows (no Docker)
+## Note on testing and local setup
 
-**Prerequisites:**
-- Python 3.11+ (download from python.org — check "Add to PATH")
-- MySQL 8 (download from mysql.com or use XAMPP/WAMP)
-
-**Step 1 — Run setup:**
-```bat
-setup.bat
-```
-
-**Step 2 — Create the MySQL database:**
-
-Open MySQL Workbench or command prompt:
-```sql
-CREATE DATABASE speakup CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-**Step 3 — Edit `.env`:**
-
-Open the `.env` file that was created by setup.bat and update:
-```env
-DATABASE_URL=mysql+pymysql://root:YOURPASSWORD@localhost:3306/speakup
-APP_SECRET_KEY=any-long-random-string-here
-```
-
-**Step 4 — Seed the database:**
-```bat
-.venv\Scripts\python.exe seed.py
-```
-
-**Step 5 — Start the app:**
-```bat
-run.bat
-```
-
-Open: **http://localhost:8000**
+This project was **tested end-to-end using Docker only**. The **Windows, non-Docker** instructions (`setup.bat`, `run.bat`, local MySQL, and virtual environment steps) are included because they describe a path that can be followed on a typical Windows machine; they are **not** documented as having received the same level of verification as the Docker workflow. Prefer **Docker** when you want the environment that matches how the application was actually run and tested.
 
 ---
 
-## Test Users (created by seed.py)
+## Table of contents
+
+1. [Note on testing and local setup](#note-on-testing-and-local-setup)
+2. [What Docker runs](#what-docker-runs)
+3. [Prerequisites](#prerequisites)
+4. [Docker: first-time setup](#docker-first-time-setup)
+5. [Test users (seed.py)](#test-users-created-by-seedpy)
+6. [Useful Docker commands](#useful-docker-commands)
+7. [Configuration and secrets](#configuration-and-secrets)
+8. [Troubleshooting: Docker build](#troubleshooting-docker-build-failures)
+9. [Troubleshooting: runtime and ports](#troubleshooting-container-starts-but-app-fails)
+10. [Local development without Docker](#local-development-without-docker)
+11. [Production and security notes](#production-and-security-notes)
+12. [Project structure](#project-structure)
+13. [How escalation works](#how-escalation-works)
+14. [Anonymity and identity visibility](#anonymity-and-identity-visibility)
+15. [Security features](#security-features)
+16. [API routes summary](#api-routes-summary)
+17. [Database indexes](#database-indexes)
+18. [Environment variables (reference)](#environment-variables-reference)
+19. [Alembic migrations](#running-alembic-migrations-optional-for-production)
+20. [Low-bandwidth optimizations](#low-bandwidth-optimizations)
+
+---
+
+## What Docker runs
+
+| Component | Image / build | Host port | Purpose |
+|-----------|-----------------|-----------|---------|
+| `db` | `mysql:8.0` | **3307** maps to container 3306 | MySQL database; persistent data in named volume `speakup_mysql_data` |
+| `app` | Built from `Dockerfile` (Python 3.11) | **8000** | FastAPI and Uvicorn |
+
+**Startup order:** The `app` service waits until `db` passes its healthcheck (`mysqladmin ping`). The app container runs `seed.py` once, then starts Uvicorn. Tables are also created at import time via SQLAlchemy `Base.metadata.create_all()` in `app/main.py` (development-style bootstrap; production deployments should use Alembic migrations).
+
+**Uploads:** `docker-compose.yml` mounts a named volume at `app/static/uploads` inside the container so uploaded images survive container restarts (this is not bind-mounted to your host by default).
+
+---
+
+## Prerequisites
+
+1. **Docker Engine** and **Docker Compose** v2 (Docker Desktop on Windows or macOS includes both).
+2. **Host ports available:** `8000` (web) and optionally `3307` (MySQL from the host). If another process uses them, change the left side of the port mappings in `docker-compose.yml` or stop the conflicting service.
+3. Sufficient disk space and RAM for MySQL and the Python app (Docker Desktop defaults are usually enough for local development).
+
+---
+
+## Docker: first-time setup
+
+1. Open a terminal in the project root (the directory that contains `docker-compose.yml` and `Dockerfile`).
+
+2. Ensure the Docker daemon is running (Docker Desktop started; on Linux, `docker info` should succeed).
+
+3. Build images and start containers:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   To run in the background:
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+4. When the database is healthy and the app is listening, open **http://localhost:8000** in a browser.
+
+5. **Seeding:** `seed.py` runs automatically every time the `app` container starts (before Uvicorn). It is intended to be safe to run repeatedly (idempotent seeding of categories and default users).
+
+---
+
+## Test users (created by seed.py)
 
 | Role | Email | Password |
-|---|---|---|
+|------|-------|----------|
 | SYS_ADMIN | admin@speakup.rw | Admin123! |
 | LOCAL_AUTHORITY (Gasabo) | local@speakup.rw | Local123! |
 | MINALOC_OFFICER | minaloc@speakup.rw | Minaloc123! |
 | PRESIDENT_OFFICE_OFFICER | presoffice@speakup.rw | Pres123! |
 | CITIZEN (demo) | citizen@speakup.rw | Citizen123! |
 
+Change all passwords before any real deployment.
+
 ---
 
-## Project Structure
+## Useful Docker commands
+
+```bash
+docker compose ps
+docker compose logs -f app
+docker compose logs -f db
+docker compose down
+```
+
+Stop containers and remove named volumes (wipes database and upload volume data):
+
+```bash
+docker compose down -v
+```
+
+Rebuild after changing `Dockerfile` or `requirements.txt`:
+
+```bash
+docker compose build --no-cache app
+docker compose up
+```
+
+---
+
+## Configuration and secrets
+
+### Values in `docker-compose.yml`
+
+The `app` service sets environment variables directly (not only from a `.env` file inside the image):
+
+- **`DATABASE_URL`** must match the MySQL user, password, host `db` (the Compose service name), and database name defined for the `db` service.
+- Default DB user in Compose: `speakup` / `speakup123`, database `speakup`. Root password for the MySQL image is `rootpassword` unless you change it.
+
+If you change `MYSQL_USER`, `MYSQL_PASSWORD`, or `MYSQL_DATABASE` under `db`, you must update **`DATABASE_URL`** on the `app` service to match.
+
+### `APP_SECRET_KEY`
+
+The compose file includes a placeholder `APP_SECRET_KEY`. For anything beyond local throwaway use, replace it with a long random string and keep it private.
+
+### `.env` and `app/config.py`
+
+`app/config.py` loads variables with `python-dotenv` from a `.env` file **if present**. Docker Compose injects variables into the container, so a `.env` file is not required inside the image for Docker runs. `.env` is mainly for non-Docker local development. See `.env.example` for variable names.
+
+---
+
+## Troubleshooting: Docker build failures
+
+### `apt-get update` or `apt-get install` errors
+
+- **Cause:** Network issues, proxy, or blocked package mirrors.
+- **Actions:** Retry the build; check VPN or proxy settings; on corporate networks configure Docker proxy settings.
+
+### `pip install` fails (timeout, SSL, hash mismatch)
+
+- **Cause:** Network or PyPI access problems.
+- **Actions:** Retry; check firewall; try a stable connection or different network.
+
+### Compiler or wheel build errors (e.g. Pillow)
+
+- **Cause:** Native extensions need build tools. The `Dockerfile` installs `gcc` and related packages.
+- **Actions:** Keep `apt-get` dependencies aligned with `requirements.txt`. Do not remove build tools unless you rely on prebuilt wheels for your platform.
+
+### `COPY` or `requirements.txt` not found
+
+- **Cause:** Build context is not the directory containing `Dockerfile` and `requirements.txt`.
+- **Actions:** Run `docker compose build` from the project root where `docker-compose.yml` lives.
+
+---
+
+## Troubleshooting: container starts but app fails
+
+### App container exits immediately
+
+- **Check:** `docker compose logs app`
+- **Typical causes:** `seed.py` or import-time code throws (wrong `DATABASE_URL`, DB unreachable). `depends_on` with `service_healthy` should wait for MySQL; if the healthcheck fails, inspect `docker compose logs db`.
+
+### Cannot connect to MySQL / connection refused
+
+- **From inside the app container:** `DATABASE_URL` must use host **`db`**, not `localhost`.
+- **Credentials:** User, password, and database name in `DATABASE_URL` must match the running MySQL instance.
+
+### Database healthcheck never succeeds
+
+- **Check:** `docker compose logs db` for MySQL errors.
+- **Cause:** Mismatch between healthcheck credentials and actual MySQL users. The healthcheck uses `speakup` / `speakup123`; these must match the first-time initialization (changing env vars after a volume already exists does not change existing MySQL users without manual steps).
+
+---
+
+## Troubleshooting: host and port issues
+
+### Port 8000 already in use
+
+- **Actions:** Stop the other process, or change the mapping in `docker-compose.yml` to e.g. `"8080:8000"` and open `http://localhost:8080`.
+
+### Port 3307 conflicts
+
+- **Actions:** Change `"3307:3306"` to another free host port, e.g. `"3308:3306"`.
+
+### Browser cannot reach `localhost:8000` (Windows)
+
+- **Actions:** Confirm Docker Desktop is running; try `http://127.0.0.1:8000`; check Windows Firewall; ensure WSL2 / Docker networking is healthy if applicable.
+
+### Compose warning: `the attribute version is obsolete`
+
+- Docker Compose v2 may warn that top-level `version:` is ignored.
+- **Actions:** Safe to ignore, or remove the `version:` line from `docker-compose.yml` to silence the warning.
+
+---
+
+## Local development without Docker
+
+This section complements the [note on testing and local setup](#note-on-testing-and-local-setup): Docker is the verified path; the steps below are for developers who prefer a native Windows (or similar) install using commands and batch files that are known to be workable.
+
+**Prerequisites:** Python 3.11+, MySQL 8 (installer, XAMPP, WAMP, or similar).
+
+1. Copy `.env.example` to `.env` and set `DATABASE_URL` and `APP_SECRET_KEY` for your local MySQL (host `localhost`, port `3306` unless you changed it).
+2. Create the database:
+
+   ```sql
+   CREATE DATABASE speakup CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+
+3. **Windows:** Run `setup.bat` to create a virtual environment and install dependencies. Then run `seed.py` and start the app with `run.bat`, or manually:
+
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\pip install -r requirements.txt
+   .venv\Scripts\python.exe seed.py
+   .venv\Scripts\uvicorn.exe app.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+4. Open **http://localhost:8000**
+
+In development, tables are auto-created on application import. For production, prefer **Alembic** (`alembic upgrade head`) instead of relying only on `create_all`.
+
+---
+
+## Production and security notes
+
+- Replace default MySQL passwords and `APP_SECRET_KEY` in Compose or your secrets manager.
+- Set `https_only=True` on session middleware when serving behind HTTPS (`app/main.py`).
+- Avoid exposing the MySQL host port publicly; bind to localhost only or omit the port mapping if only the app container needs the database.
+
+---
+
+## Project structure
 
 ```
 speakup/
@@ -113,7 +267,7 @@ speakup/
 │   │   ├── admin/        # users, categories, reports, audit
 │   │   └── errors/       # 404.html, 403.html
 │   └── static/
-│       └── uploads/      # Uploaded images stored here (created at runtime/build if missing)
+│       └── uploads/      # Uploaded images (created at runtime if missing)
 ├── alembic/
 │   ├── env.py
 │   └── versions/
@@ -129,72 +283,70 @@ speakup/
 
 ---
 
-## How Escalation Works
+## How escalation works
 
-Issues follow a 3-level hierarchy: **LOCAL → MINALOC → PRESIDENT**
+Issues follow a three-level hierarchy: **LOCAL → MINALOC → PRESIDENT**.
 
 ### Citizen-driven escalation
-1. Authority marks issue **Resolved** at LOCAL level
-2. Citizen sees a feedback panel — options: **Satisfied** or **Not Resolved**
-3. If "Not Resolved" → issue escalates to MINALOC level
-4. After MINALOC resolves — citizen sees: **Satisfied** or **Not Fair**
-5. If "Not Fair" → escalates to PRESIDENT (highest level, no further escalation)
+
+1. Authority marks an issue **Resolved** at LOCAL level.
+2. Citizen sees a feedback panel with **Satisfied** or **Not Resolved**.
+3. If **Not Resolved**, the issue escalates to MINALOC level.
+4. After MINALOC resolves, the citizen sees **Satisfied** or **Not Fair**.
+5. If **Not Fair**, the issue escalates to PRESIDENT (highest level; no further escalation).
 
 ### SLA auto-escalation (runs daily at 02:00 UTC)
-- If no `AuthorityResponse` exists at the current level for **30+ days** since the issue entered that level → system auto-escalates
-- If issue is at PRESIDENT and still no action after 30 days → flagged **OVERDUE**
-- Admin can trigger SLA check manually: **Admin → Reports → Run SLA Check**
 
-The SLA timer resets every time an issue moves to a new level (`level_entered_at` is updated).
+- If there is no `AuthorityResponse` at the current level for **30+ days** since the issue entered that level, the system auto-escalates.
+- If the issue is at PRESIDENT and there is still no action after 30 days, it is flagged **OVERDUE**.
+- Admin can trigger an SLA check manually: **Admin → Reports → Run SLA Check**.
 
----
-
-## How Anonymity / Identity Visibility Works
-
-When a citizen submits an issue with **"Submit Anonymously"** checked:
-
-| Viewer Role | Can See Identity? |
-|---|---|
-| LOCAL_AUTHORITY | ❌ Never |
-| MINALOC_OFFICER | ✅ When issue is at MINALOC level or higher, OR citizen marked Satisfied |
-| PRESIDENT_OFFICE_OFFICER | ✅ When issue is at PRESIDENT level, OR citizen marked Satisfied |
-| SYS_ADMIN | ✅ Always |
-
-This is enforced in both the **backend** (`services.can_view_identity()`) and the **templates** (conditional rendering).
-
-For **non-anonymous** issues, all roles can see the reporter identity normally.
+The SLA timer resets whenever an issue moves to a new level (`level_entered_at` is updated).
 
 ---
 
-## Security Features
+## Anonymity and identity visibility
 
-- **Passwords**: bcrypt hashed via passlib
-- **Sessions**: Signed cookie sessions via Starlette SessionMiddleware (8-hour TTL)
-- **CSRF**: Token-in-session + hidden form field on all POST forms
-- **File uploads**: Only JPG/PNG, max 5MB, randomized filenames (UUID)
-- **IDOR protection**:
-  - Citizens can only access their own issues
-  - Local authorities filtered by jurisdiction district
-  - MINALOC sees only MINALOC-level issues
-  - President sees only PRESIDENT-level issues
-- **Input validation**: Min-length checks, email uniqueness, category/status enum validation
+When a citizen submits an issue with **Submit Anonymously** checked:
+
+| Viewer Role | Can see identity? |
+|-------------|-------------------|
+| LOCAL_AUTHORITY | Never |
+| MINALOC_OFFICER | When issue is at MINALOC level or higher, or citizen marked Satisfied |
+| PRESIDENT_OFFICE_OFFICER | When issue is at PRESIDENT level, or citizen marked Satisfied |
+| SYS_ADMIN | Always |
+
+This is enforced in the backend (`services.can_view_identity()`) and in templates (conditional rendering).
+
+For **non-anonymous** issues, all roles see the reporter identity in line with normal rules.
 
 ---
 
-## API Routes Summary
+## Security features
+
+- **Passwords:** bcrypt via passlib
+- **Sessions:** Signed cookie sessions via Starlette SessionMiddleware (8-hour TTL)
+- **CSRF:** Token in session plus hidden form field on POST forms
+- **File uploads:** JPG/PNG only, max 5MB, randomized filenames (UUID)
+- **IDOR protection:** Citizens only their own issues; local authorities filtered by jurisdiction; MINALOC and President office scopes enforced
+- **Input validation:** Min-length checks, email uniqueness, category/status validation
+
+---
+
+## API routes summary
 
 | Method | Path | Who |
-|---|---|---|
+|--------|------|-----|
 | GET/POST | `/register`, `/login` | Public |
 | GET | `/logout` | Authenticated |
 | GET/POST | `/issues/new` | CITIZEN |
 | GET | `/issues` | CITIZEN |
 | GET | `/issues/{id}` | CITIZEN (own issues only) |
 | POST | `/issues/{id}/feedback` | CITIZEN |
-| GET | `/authority/issues` | AUTH roles |
-| GET | `/authority/issues/{id}` | AUTH roles |
-| POST | `/authority/issues/{id}/respond` | AUTH roles |
-| POST | `/authority/issues/{id}/status` | AUTH roles |
+| GET | `/authority/issues` | Authority roles |
+| GET | `/authority/issues/{id}` | Authority roles |
+| POST | `/authority/issues/{id}/respond` | Authority roles |
+| POST | `/authority/issues/{id}/status` | Authority roles |
 | GET/POST | `/admin/users/*` | SYS_ADMIN |
 | GET/POST | `/admin/categories/*` | SYS_ADMIN |
 | GET | `/admin/reports` | SYS_ADMIN |
@@ -203,9 +355,9 @@ For **non-anonymous** issues, all roles can see the reporter identity normally.
 
 ---
 
-## Database Indexes
+## Database indexes
 
-The following indexes are defined for performance with 50+ concurrent users:
+Indexes defined for performance with concurrent users:
 
 ```sql
 INDEX ix_issue_level_status (current_level, current_status)
@@ -217,51 +369,37 @@ INDEX ix_escalation_issue_created (issue_id, created_at)
 
 ---
 
-## Environment Variables
+## Environment variables (reference)
 
 | Variable | Description | Default |
-|---|---|---|
+|----------|-------------|---------|
 | `APP_HOST` | App bind host | 0.0.0.0 |
 | `APP_PORT` | App bind port | 8000 |
-| `DATABASE_URL` | MySQL connection string | (see .env.example) |
-| `APP_SECRET_KEY` | Session signing key | change-this! |
+| `DATABASE_URL` | MySQL SQLAlchemy URL | See `.env.example` |
+| `APP_SECRET_KEY` | Session signing key | Must be set in production |
 | `APP_ENV` | `development` or `production` | development |
 | `UPLOAD_DIR` | Upload storage path | app/static/uploads |
-| `MAX_UPLOAD_SIZE_MB` | Max file size | 5 |
+| `MAX_UPLOAD_SIZE_MB` | Max file size (MB) | 5 |
 | `SLA_DAYS` | Days before SLA escalation | 30 |
 
 ---
 
-## Docker Troubleshooting
-
-- Warning: `the attribute version is obsolete`
-  - Cause: Docker Compose v2 ignores top-level `version`.
-  - Current state: safe to ignore.
-  - Optional cleanup: remove `version: "3.9"` from `docker-compose.yml` to silence the warning.
-
----
-
-## Running Alembic Migrations (optional for production)
+## Running Alembic migrations (optional for production)
 
 ```bash
-# Generate migration after model changes
 alembic revision --autogenerate -m "describe change"
-
-# Apply migrations
 alembic upgrade head
-
-# Rollback
 alembic downgrade -1
 ```
 
-In development, tables are auto-created by `Base.metadata.create_all()` on startup.
+In development, tables are also created by `Base.metadata.create_all()` on startup.
 
 ---
 
-## Low-Bandwidth Optimizations
+## Low-bandwidth optimizations
 
-- All pages served as server-rendered HTML (no SPA overhead)
-- Images compressed client-side limit: 5MB max accepted
-- Bootstrap served from CDN with browser caching
-- No inline base64 images
-- Tables paginated/limited (audit log: 500 entries max per load)
+- Server-rendered HTML (no SPA bundle required for core UI)
+- Upload size capped at 5MB
+- Bootstrap loaded from CDN with browser caching
+- No inline base64 images in templates
+- Audit log and similar views limited (e.g. 500 entries per load)
